@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,8 +26,8 @@ class ProductController extends Controller
      */
     public function index()
     {
-        $products = $this->user->products()->get(['id','title','description','price','image','created_by']);
-        return response()->json($products->toArray());
+        $products = $this->user->products()->orderBy('created_at','desc')->get();
+        return ProductResource::collection($products);
     }
 
     /**
@@ -46,29 +47,15 @@ class ProductController extends Controller
                 'image' => 'nullable|mimes:jpeg,jpg,png|max:10000',
             ]
         );
-        if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status' => false,
-                    'errors' => $validator->errors(),
-                ],
-                400
-            );
-        }
         
         $product            = new Product();
         $product->title     = $request->title;
         $product->description = $request->description ?? '';
         $product->price = $request->price;
-        $product->image = $request->image ? imageUpload($request->image) : '';
+        $product->image = $request->image ? imageUploadFromBase64($request->image) : '';
 
         if ($this->user->products()->save($product)) {
-            return response()->json(
-                [
-                    'status' => true,
-                    'product'   => $product,
-                ]
-            );
+            return ProductResource::make($product);
         } else {
             return response()->json(
                 [
@@ -87,7 +74,7 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        return $product;
+        return ProductResource::make($product);
     }
 
     /**
@@ -109,16 +96,6 @@ class ProductController extends Controller
             ]
         );
 
-        if ($validator->fails()) {
-            return response()->json(
-                [
-                    'status' => false,
-                    'errors' => $validator->errors(),
-                ],
-                400
-            );
-        }
-
         $image = null;
         if ($request->image == null) {
             imageDelete($product->image);
@@ -127,7 +104,7 @@ class ProductController extends Controller
             $image = $product->image;
         } else if ($request->image && $request->image != $product->image) {
             imageDelete($product->image);
-            $image = imageUpload($request->image);
+            $image = imageUploadFromBase64($request->image);
         }
 
         $product->title     = $request->title;
@@ -136,12 +113,7 @@ class ProductController extends Controller
         $product->image = $image;
 
         if ($this->user->products()->save($product)) {
-            return response()->json(
-                [
-                    'status' => true,
-                    'product'   => $product,
-                ]
-            );
+            return ProductResource::make($product);
         } else {
             return response()->json(
                 [
@@ -161,12 +133,7 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         if ($product->delete()) {
-            return response()->json(
-                [
-                    'status' => true,
-                    'product'   => $product,
-                ]
-            );
+            return ProductResource::make($product);
         } else {
             return response()->json(
                 [

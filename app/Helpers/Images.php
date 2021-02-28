@@ -30,5 +30,26 @@ if (! function_exists('imageDelete')) {
         return false;
     }
 }
+if (! function_exists('imageUploadFromBase64')) {
+    function imageUploadFromBase64($url)
+    {
+        $inputImage = Image::make($url);
+        $storeImageName = time().'.png';
+        $today = date('Y-m-d');
+        $today = strtotime($today);
+        $path = 'product/i/'.$today;
+        $storagePath = 'public/'.$path;
+        $storedImage = $storagePath.'/'.$storeImageName;
+
+        if(Storage::exists($storedImage)) {
+            $d = new DateTime();
+            $miliSecond = $d->format('s-u-');
+            $storedImage = $storagePath.'/'.$miliSecond.$storeImageName;
+        }
+        Storage::put($storedImage, (string) $inputImage->encode());
+        $imagePath = '/'.str_replace("public", 'storage', $storedImage);
+        return $imagePath;
+    }
+}
 
     

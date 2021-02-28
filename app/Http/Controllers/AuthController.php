@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -26,16 +27,14 @@ class AuthController extends Controller
             ]
         );
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
-        }
-
         $token_validity = (24 * 60);
 
         $this->guard()->factory()->setTTL($token_validity);
 
         if (!$token = $this->guard()->attempt($validator->validated())) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
         }
 
         return $this->respondWithToken($token);
@@ -53,7 +52,7 @@ class AuthController extends Controller
         );
 
         if ($validator->fails()) {
-            return response()->json([$validator->errors()], 422);
+            return response()->json(['errors'=>$validator->errors()], 422);
         }
 
         $user = User::create(
